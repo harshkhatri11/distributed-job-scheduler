@@ -25,8 +25,8 @@ and monitor execution across distributed workers.
 | Phase | Description | Status |
 |---|---|---|
 | 1 | Architecture & Design | ✅ Done |
-| 2 | Core Backend | 🔄 In Progress |
-| 3 | Observability | ⏳ Planned |
+| 2 | Core Backend | ✅ Done |
+| 3 | Observability | 🔄 In Progress |
 | 4 | Angular Dashboard | ⏳ Planned |
 | 5 | DevOps & Go Live | ⏳ Planned |
 
