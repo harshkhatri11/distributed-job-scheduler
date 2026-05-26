@@ -1,0 +1,37 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+scrape_configs:
+
+  - job_name: scheduler-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - "${SCHEDULER_HOST}:${SCHEDULER_PORT}"
+    relabel_configs:
+      - target_label: service
+        replacement: scheduler-service
+
+  - job_name: worker-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - "${WORKER_HOST}:${WORKER_PORT}"
+    relabel_configs:
+      - target_label: service
+        replacement: worker-service
+
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - localhost:9090

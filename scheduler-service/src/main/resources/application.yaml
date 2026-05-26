@@ -3,9 +3,9 @@ spring:
     name: scheduler-service
 
   datasource:
-    url:  ${DB_URL}
+    url: ${DB_URL}
     username: ${DB_USERNAME}
-    password:  ${DB_PASSWORD}
+    password: ${DB_PASSWORD}
 
   jpa:
     hibernate:
@@ -47,11 +47,35 @@ spring:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
 
+# ─── Observability ───────────────────────────────────────────────────────────
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_BASE_URL}/api/v2/spans
+
+# ─── Kafka topic names ────────────────────────────────────────────────────────
+
 kafka:
   topics:
     job-trigger: job.trigger
     job-result: job.result
     job-dlq: job.dlq
+
+# ─── Logging ──────────────────────────────────────────────────────────────────
 
 logging:
   level:

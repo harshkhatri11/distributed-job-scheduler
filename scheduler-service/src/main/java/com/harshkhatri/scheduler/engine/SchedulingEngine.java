@@ -4,6 +4,7 @@ import com.harshkhatri.scheduler.entity.Job;
 import com.harshkhatri.scheduler.entity.JobExecution;
 import com.harshkhatri.scheduler.enums.ExecutionStatus;
 import com.harshkhatri.scheduler.enums.JobStatus;
+import com.harshkhatri.scheduler.metrics.SchedulerMetrics;
 import com.harshkhatri.scheduler.model.ScheduledJob;
 import com.harshkhatri.scheduler.producer.JobEventProducer;
 import com.harshkhatri.scheduler.repository.JobExecutionRepository;
@@ -35,6 +36,7 @@ public class SchedulingEngine {
     private final JobExecutionRepository jobExecutionRepository;
     private final JobEventProducer jobEventProducer;
     private final StringRedisTemplate redisTemplate;
+    private final SchedulerMetrics schedulerMetrics;
 
     private final DelayQueue<ScheduledJob> delayQueue = new DelayQueue<>();
     private final ExecutorService dispatchThread = Executors.newSingleThreadExecutor(
@@ -124,7 +126,7 @@ public class SchedulingEngine {
         Job job = jobRepository.findById(scheduledJob.getJobId()).orElse(null);
         if (job == null || job.getStatus() != JobStatus.ACTIVE) {
             log.info("Skipping job={} — not found or not ACTIVE", scheduledJob.getJobId());
-            return; // no reschedule — job is paused/failed/deleted
+            return;
         }
 
         String lockKey = "lock:job:" + job.getId();
@@ -140,6 +142,9 @@ public class SchedulingEngine {
 
         log.info("Lock acquired for job={}", job.getId());
 
+        // Capture fire time before dispatch to measure scheduling latency
+        Instant fireTime = Instant.now();
+
         try {
             JobExecution execution = JobExecution.builder()
                     .job(job)
@@ -154,10 +159,17 @@ public class SchedulingEngine {
 
             jobEventProducer.publishJobTrigger(job, execution);
 
+            // Kafka publish succeeded — record the trigger and how long it took
+            schedulerMetrics.recordJobTriggered();
+            schedulerMetrics.recordSchedulingLatency(
+                    Duration.between(fireTime, Instant.now()).toMillis()
+            );
+
         } catch (Exception e) {
             log.error("Failed to dispatch job={}", job.getId(), e);
+            // Kafka publish failed — count it so Grafana can alert on publish errors
+            schedulerMetrics.recordTriggerFailure();
         } finally {
-            // Re-read status — job may have been paused mid-dispatch by DLQ consumer
             Job fresh = jobRepository.findById(job.getId()).orElse(null);
             if (fresh != null && fresh.getStatus() == JobStatus.ACTIVE) {
                 reschedule(fresh);

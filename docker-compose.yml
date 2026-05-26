@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16
-    container_name: job-scheduler-postgres
+    container_name: jscheduler-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -10,17 +10,21 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - core
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
-    container_name: job-scheduler-zookeeper
+    container_name: jscheduler-zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: ${ZOOKEEPER_CLIENT_PORT}
       ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - core
 
   kafka:
     image: confluentinc/cp-kafka:7.6.0
-    container_name: job-scheduler-kafka
+    container_name: jscheduler-kafka
     depends_on:
       - zookeeper
     ports:
@@ -30,12 +34,21 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - core
 
   redis:
     image: redis:7.2
-    container_name: job-scheduler-redis
+    container_name: jscheduler-redis
     ports:
       - "6379:6379"
+    networks:
+      - core
 
 volumes:
   postgres_data:
+
+networks:
+  core:
+    name: core
+    driver: bridge

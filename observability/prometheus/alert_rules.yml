@@ -1,0 +1,77 @@
+groups:
+
+  - name: scheduler-service
+    interval: 30s
+    rules:
+      - alert: SchedulerTriggerFailure
+        expr: increase(scheduler_jobs_trigger_failures_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          service: scheduler-service
+        annotations:
+          summary: "Scheduler failed to publish job to Kafka"
+          description: "{{ $value }} trigger failure(s) in the last 5 minutes."
+
+      - alert: SchedulerNoJobsFiring
+        expr: increase(scheduler_jobs_triggered_total[10m]) == 0
+        for: 10m
+        labels:
+          severity: warning
+          service: scheduler-service
+        annotations:
+          summary: "No jobs have been triggered in 10 minutes"
+          description: "Scheduling engine may be stalled or no active jobs exist."
+
+  - name: worker-service
+    interval: 30s
+    rules:
+      - alert: WorkerJobDeadLettered
+        expr: increase(worker_jobs_dead_lettered_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          service: worker-service
+        annotations:
+          summary: "Job moved to dead letter queue"
+          description: "{{ $value }} job(s) dead-lettered in the last 5 minutes."
+
+      - alert: WorkerHighFailureRate
+        expr: >
+          rate(worker_jobs_failed_total[5m])
+          /
+          (rate(worker_jobs_succeeded_total[5m]) + rate(worker_jobs_failed_total[5m]))
+          > 0.2
+        for: 2m
+        labels:
+          severity: warning
+          service: worker-service
+        annotations:
+          summary: "Worker job failure rate exceeded 20%"
+          description: "Current failure rate is {{ $value | humanizePercentage }}."
+
+      - alert: WorkerSlowExecution
+        expr: >
+          rate(worker_job_execution_duration_seconds_sum[5m])
+          /
+          rate(worker_job_execution_duration_seconds_count[5m])
+          > 30
+        for: 2m
+        labels:
+          severity: warning
+          service: worker-service
+        annotations:
+          summary: "Average job execution duration exceeded 30 seconds"
+          description: "Current average is {{ $value | humanizeDuration }}."
+
+  - name: infrastructure
+    interval: 30s
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Prometheus cannot reach {{ $labels.job }} at {{ $labels.instance }}."

@@ -1,10 +1,28 @@
 spring:
   application:
     name: worker-service
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
+  flyway:
+    enabled: false
+
   kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     listener:
       ack-mode: record
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     consumer:
       group-id: worker-group
       auto-offset-reset: earliest
@@ -25,29 +43,35 @@ spring:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
 
+# ─── Observability ───────────────────────────────────────────────────────────
 
-  datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_BASE_URL}/api/v2/spans
 
-  jpa:
-    hibernate:
-      ddl-auto: none
-    open-in-view: false
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-
-  flyway:
-    enabled: false
+# ─── Kafka topic names ────────────────────────────────────────────────────────
 
 kafka:
   topics:
     job-trigger: job.trigger
     job-result: job.result
     job-dlq: job.dlq
+
+# ─── Logging ──────────────────────────────────────────────────────────────────
 
 logging:
   level:

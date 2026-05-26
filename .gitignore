@@ -31,3 +31,5 @@ frontend/.angular/
 # ── Logs ──
 *.log
 logs/
+
+observability/prometheus/prometheus.resolved.yml

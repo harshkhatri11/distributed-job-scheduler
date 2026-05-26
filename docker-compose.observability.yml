@@ -1,0 +1,90 @@
+version: "3.9"
+
+networks:
+  observability:
+    driver: bridge
+  core:
+    external: true
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: jscheduler-prometheus
+    volumes:
+      - ./observability/prometheus/prometheus.resolved.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    ports:
+      - "9090:9090"
+    networks:
+      - observability
+      - core
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: jscheduler-loki
+    volumes:
+      - ./observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/loki-config.yml
+    ports:
+      - "3100:3100"
+    networks:
+      - observability
+      - core
+    restart: unless-stopped
+
+  zipkin:
+    image: openzipkin/zipkin:3.4
+    container_name: jscheduler-zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - observability
+      - core
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: jscheduler-alertmanager
+    volumes:
+      - ./observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+    ports:
+      - "9093:9093"
+    networks:
+      - observability
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: jscheduler-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - ZIPKIN_BASE_URL=${ZIPKIN_BASE_URL}
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - loki
+      - zipkin
+    networks:
+      - observability
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  loki_data:
+  grafana_data:
