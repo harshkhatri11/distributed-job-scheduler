@@ -28,6 +28,7 @@ public class JobResultConsumer {
     )
     @Transactional
     public void consume(JobResultPayload payload) {
+        log.info("DEBUG received traceId={}", payload.traceId());
         log.info("Received result for job={} executionId={} status={}",
                 payload.jobId(), payload.executionId(), payload.status());
 
@@ -47,6 +48,7 @@ public class JobResultConsumer {
         execution.setResultOutput(payload.resultOutput());
         execution.setErrorMessage(payload.errorMessage());
         execution.setAttemptNumber(payload.attemptNumber());
+        execution.setTraceId(payload.traceId());
         jobExecutionRepository.save(execution);
 
         log.info("Updated execution={} status={}", execution.getId(), execution.getStatus());

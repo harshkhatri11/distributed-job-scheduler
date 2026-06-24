@@ -11,5 +11,6 @@ public record JobResultPayload(
         Instant startedAt,
         Instant completedAt,
         String resultOutput,
-        String errorMessage
+        String errorMessage,
+        String traceId
 ) {}

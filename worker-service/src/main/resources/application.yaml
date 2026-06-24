@@ -23,6 +23,7 @@ spring:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     listener:
       ack-mode: record
+      observation-enabled: true
     consumer:
       group-id: worker-group
       auto-offset-reset: earliest

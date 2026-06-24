@@ -8,6 +8,7 @@ import com.harshkhatri.worker.producer.JobResultProducer;
 import com.harshkhatri.worker.service.JobExecutionHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -45,7 +46,9 @@ public class JobExecutionHandlerImpl implements JobExecutionHandler {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "No executor found for job type: " + payload.jobType()));
 
-        // startedAt anchors the full execution duration regardless of retries
+        String traceId = MDC.get("traceId");
+        log.info("DEBUG traceId from MDC: {}", traceId);
+
         Instant startedAt = Instant.now();
         int maxAttempts = payload.maxRetries() + 1;
 
@@ -66,10 +69,10 @@ public class JobExecutionHandlerImpl implements JobExecutionHandler {
                         startedAt,
                         completedAt,
                         output,
-                        null
+                        null,
+                        traceId
                 ));
 
-                // Record success and total wall-clock time including any retry backoff
                 workerMetrics.recordSuccess();
                 workerMetrics.recordExecutionDuration(
                         Duration.between(startedAt, completedAt).toMillis()
@@ -80,8 +83,6 @@ public class JobExecutionHandlerImpl implements JobExecutionHandler {
                 log.warn("Attempt {}/{} failed for job={}: {}",
                         attempt, maxAttempts, payload.jobId(), e.getMessage());
 
-                // Every failed attempt increments the failure counter so Grafana
-                // shows total failure events, not just jobs that were dead-lettered
                 workerMetrics.recordFailure();
 
                 if (attempt == maxAttempts) {
@@ -98,10 +99,10 @@ public class JobExecutionHandlerImpl implements JobExecutionHandler {
                             startedAt,
                             deadAt,
                             null,
-                            e.getMessage()
+                            e.getMessage(),
+                            traceId
                     ));
 
-                    // Separate counter for DLQ events — drives the critical alert rule
                     workerMetrics.recordDeadLettered();
                     workerMetrics.recordExecutionDuration(
                             Duration.between(startedAt, deadAt).toMillis()

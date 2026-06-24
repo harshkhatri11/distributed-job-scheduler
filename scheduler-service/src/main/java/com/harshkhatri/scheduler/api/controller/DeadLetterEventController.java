@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/dead-letter-events")
+@RequestMapping("/api/v1/dlq")
 @RequiredArgsConstructor
 public class DeadLetterEventController {
 
