@@ -1,0 +1,70 @@
+<div class="flex items-center justify-between px-6 pt-5 pb-3">
+  <h2 mat-dialog-title class="text-lg font-semibold m-0" style="color: var(--color-text)">
+    Execution Error
+  </h2>
+  <button mat-icon-button mat-dialog-close>
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
+
+<mat-divider />
+
+<mat-dialog-content class="px-6 py-4 space-y-4">
+  <div class="grid grid-cols-2 gap-4 text-sm">
+    <div>
+      <p class="text-xs uppercase tracking-wide mb-1" style="color: var(--color-muted)">
+        Execution ID
+      </p>
+      <p class="font-mono break-all" style="color: var(--color-text)">{{ execution.id }}</p>
+    </div>
+    <div>
+      <p class="text-xs uppercase tracking-wide mb-1" style="color: var(--color-muted)">Attempt</p>
+      <p class="font-mono" style="color: var(--color-text)">{{ execution.attemptNumber }}</p>
+    </div>
+    <div>
+      <p class="text-xs uppercase tracking-wide mb-1" style="color: var(--color-muted)">
+        Started At
+      </p>
+      <p class="font-mono" style="color: var(--color-text)">
+        {{ execution.startedAt ? (execution.startedAt | date: 'dd MMM yyyy, HH:mm:ss') : '—' }}
+      </p>
+    </div>
+    <div>
+      <p class="text-xs uppercase tracking-wide mb-1" style="color: var(--color-muted)">
+        Completed At
+      </p>
+      <p class="font-mono" style="color: var(--color-text)">
+        {{ execution.completedAt ? (execution.completedAt | date: 'dd MMM yyyy, HH:mm:ss') : '—' }}
+      </p>
+    </div>
+  </div>
+
+  <mat-divider />
+
+  <div>
+    <p class="text-xs uppercase tracking-wide mb-2" style="color: var(--color-muted)">
+      Error Message
+    </p>
+    <pre
+      class="rounded p-3 text-xs overflow-auto max-h-64 whitespace-pre-wrap break-all"
+      style="
+        background: var(--color-surface-2);
+        border: 1px solid var(--color-border);
+        color: var(--color-danger);
+      "
+      >{{ execution.errorMessage }}</pre
+    >
+  </div>
+</mat-dialog-content>
+
+<mat-divider />
+
+<mat-dialog-actions align="end" class="px-6 py-3">
+  @if (execution.traceId) {
+    <button mat-stroked-button (click)="openTrace()">
+      <mat-icon>timeline</mat-icon>
+      View Trace
+    </button>
+  }
+  <button mat-button mat-dialog-close>Close</button>
+</mat-dialog-actions>

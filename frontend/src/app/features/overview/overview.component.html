@@ -1,0 +1,75 @@
+<div class="page">
+  <div class="page__header">
+    <div class="page__title-block">
+      <h1 class="page__title">Overview</h1>
+      @if (lastRefreshed()) {
+        <span class="page__count">refreshed at {{ formatTime(lastRefreshed()!) }}</span>
+      }
+    </div>
+    <button mat-stroked-button (click)="loadAll()" [disabled]="loading()">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="state-msg">
+      <mat-spinner diameter="32" />
+    </div>
+  } @else if (error()) {
+    <div class="state-msg state-msg--error">{{ error() }}</div>
+  } @else {
+    <div class="stat-grid">
+      @for (card of statCards(); track card.label) {
+        <div class="stat-card">
+          <div class="stat-card__icon">
+            <mat-icon [style.color]="'var(' + card.accent + ')'">{{ card.icon }}</mat-icon>
+          </div>
+          <div class="stat-card__body">
+            <div class="stat-card__value">{{ card.value }}</div>
+            <div class="stat-card__label">{{ card.label }}</div>
+            <div class="stat-card__sub">{{ card.sub }}</div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-card chart-card--wide">
+        <div class="chart-card__header">
+          <span class="chart-card__title">Executions — last 24h</span>
+          <span class="chart-card__sub">bucketed by hour</span>
+        </div>
+        <div echarts [options]="lineOptions()!" class="chart" style="height: 220px"></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-card__header">
+          <span class="chart-card__title">Execution Status</span>
+          <span class="chart-card__sub">all time</span>
+        </div>
+        <div class="donut-wrap">
+          <div echarts [options]="donutOptions()!" class="chart" style="height: 220px"></div>
+          <div class="donut-center">
+            <span class="donut-center__value">{{ executions.length }}</span>
+            <span class="donut-center__label">total</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-card__header">
+        <span class="chart-card__title">Executions per Job</span>
+        <span class="chart-card__sub">top 10, all time</span>
+      </div>
+      <div
+        echarts
+        [options]="barOptions()!"
+        class="chart"
+        [style.height.px]="Math.max(160, barOptions()?.yAxis?.data?.length * 36)"
+        (chartClick)="navigateToJob($event.name)"
+      ></div>
+    </div>
+  }
+</div>

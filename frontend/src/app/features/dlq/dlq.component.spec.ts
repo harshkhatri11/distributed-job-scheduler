@@ -1,16 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { App } from './app';
-import { provideRouter } from '@angular/router';
+import { DlqComponent } from './dlq.component';
 
-describe('App', () => {
-  let fixture: ComponentFixture<App>;
+describe('DlqComponent', () => {
+  let fixture: ComponentFixture<DlqComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [App],
-      providers: [provideRouter([])],
+      imports: [DlqComponent],
     }).compileComponents();
-    fixture = TestBed.createComponent(App);
+
+    fixture = TestBed.createComponent(DlqComponent);
     fixture.detectChanges();
   });
 

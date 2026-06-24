@@ -1,0 +1,93 @@
+<h2 mat-dialog-title class="dialog-title">Create Job</h2>
+
+<mat-dialog-content class="dialog-content">
+  <form [formGroup]="form" class="form">
+    <mat-form-field appearance="outline" class="field--full">
+      <mat-label>Job Name</mat-label>
+      <input matInput formControlName="name" placeholder="e.g. daily-report-sync" />
+      @if (form.get('name')?.hasError('required')) {
+        <mat-error>Name is required</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="field--full">
+      <mat-label>Description</mat-label>
+      <input matInput formControlName="description" placeholder="Optional description" />
+    </mat-form-field>
+
+    <div class="form__row">
+      <mat-form-field appearance="outline" class="field--half">
+        <mat-label>Job Type</mat-label>
+        <mat-select formControlName="jobType">
+          @for (type of jobTypes; track type) {
+            <mat-option [value]="type">{{ type }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="field--half">
+        <mat-label>Cron Expression</mat-label>
+        <input matInput formControlName="cronExpression" placeholder="0 * * * * *" />
+        @if (form.get('cronExpression')?.hasError('required')) {
+          <mat-error>Cron expression is required</mat-error>
+        }
+      </mat-form-field>
+    </div>
+
+    @if (isHttpWebhook) {
+      <div class="form__row">
+        <mat-form-field appearance="outline" class="field--grow">
+          <mat-label>URL</mat-label>
+          <input matInput formControlName="url" placeholder="https://example.com/webhook" />
+          @if (form.get('url')?.hasError('required')) {
+            <mat-error>URL is required</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="field--method">
+          <mat-label>Method</mat-label>
+          <mat-select formControlName="method">
+            @for (m of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']; track m) {
+              <mat-option [value]="m">{{ m }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline" class="field--full">
+        <mat-label>Request Body (JSON)</mat-label>
+        <textarea
+          matInput
+          formControlName="body"
+          rows="3"
+          placeholder='{"key": "value"}'
+        ></textarea>
+      </mat-form-field>
+    } @else {
+      <mat-form-field appearance="outline" class="field--full">
+        <mat-label>Shell Command</mat-label>
+        <input matInput formControlName="url" placeholder="echo hello" />
+        @if (form.get('url')?.hasError('required')) {
+          <mat-error>Command is required</mat-error>
+        }
+      </mat-form-field>
+    }
+
+    <div class="form__row">
+      <mat-form-field appearance="outline" class="field--half">
+        <mat-label>Max Retries</mat-label>
+        <input matInput type="number" formControlName="maxRetries" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="field--half">
+        <mat-label>Timeout (seconds)</mat-label>
+        <input matInput type="number" formControlName="timeoutSeconds" />
+      </mat-form-field>
+    </div>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions class="dialog-actions">
+  <button mat-button (click)="cancel()">Cancel</button>
+  <button mat-flat-button (click)="submit()" [disabled]="form.invalid">Create Job</button>
+</mat-dialog-actions>

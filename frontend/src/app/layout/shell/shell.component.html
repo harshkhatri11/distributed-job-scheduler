@@ -1,0 +1,24 @@
+<div class="shell">
+  @if (sidenavOpen()) {
+    <button
+      class="shell__backdrop"
+      (click)="closeSidenav()"
+      (keydown.escape)="closeSidenav()"
+    ></button>
+  }
+
+  <app-sidenav [class.sidenav--open]="sidenavOpen()" (navItemClicked)="closeSidenav()" />
+
+  <div class="shell__content">
+    <header class="shell__topbar">
+      <button mat-icon-button class="shell__menu-btn" (click)="toggleSidenav()">
+        <mat-icon>menu</mat-icon>
+      </button>
+      <span class="shell__topbar-title">JobScheduler</span>
+    </header>
+
+    <main class="shell__main">
+      <router-outlet />
+    </main>
+  </div>
+</div>

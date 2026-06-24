@@ -1,0 +1,84 @@
+<div class="p-6">
+  <div class="flex items-center justify-between mb-6 page-header-wrap">
+    <div>
+      <h1 class="text-2xl font-semibold" style="color: var(--color-text)">Dead Letter Queue</h1>
+      <p class="text-sm mt-1" style="color: var(--color-muted)">Jobs that exhausted all retries</p>
+    </div>
+    <button mat-stroked-button (click)="load()" [disabled]="loading()">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="flex justify-center py-16">
+      <mat-spinner diameter="40" />
+    </div>
+  } @else if (error()) {
+    <div class="text-sm py-8 text-center" style="color: var(--color-danger)">{{ error() }}</div>
+  } @else if (events().length === 0) {
+    <div class="text-center py-16" style="color: var(--color-muted)">
+      <mat-icon>check_circle_outline</mat-icon>
+      <p class="text-sm">No dead letter events — all jobs are healthy.</p>
+    </div>
+  } @else {
+    <div class="table-wrap">
+      <table mat-table [dataSource]="events()" class="dlq-table">
+        <ng-container matColumnDef="jobId">
+          <th mat-header-cell *matHeaderCellDef class="col-job-id">Job ID</th>
+          <td mat-cell *matCellDef="let e" class="col-job-id">
+            <span class="cell-mono" [matTooltip]="e.jobId">{{ shortId(e.jobId) }}</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="attemptsMade">
+          <th mat-header-cell *matHeaderCellDef class="col-attempts">Attempts</th>
+          <td mat-cell *matCellDef="let e" class="col-attempts">
+            <span class="font-mono text-sm font-semibold" style="color: var(--color-danger)">{{
+              e.attemptsMade
+            }}</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="failureReason">
+          <th mat-header-cell *matHeaderCellDef class="col-hide-mobile">Failure Reason</th>
+          <td mat-cell *matCellDef="let e" class="col-hide-mobile">
+            <span class="cell-reason">{{ truncate(e.failureReason) }}</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="createdAt">
+          <th mat-header-cell *matHeaderCellDef class="col-hide-tablet col-created">
+            Dead-lettered
+          </th>
+          <td mat-cell *matCellDef="let e" class="col-hide-tablet col-created">
+            <span class="cell-time" [matTooltip]="e.createdAt">{{
+              relativeTime(e.createdAt)
+            }}</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef class="col-actions"></th>
+          <td mat-cell *matCellDef="let e" class="col-actions">
+            <div class="cell-actions">
+              <button mat-icon-button (click)="openDetail(e)" matTooltip="View details">
+                <mat-icon>open_in_new</mat-icon>
+              </button>
+            </div>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr
+          mat-row
+          *matRowDef="let row; columns: displayedColumns"
+          class="cursor-pointer"
+          tabindex="0"
+          (click)="openDetail(row)"
+          (keydown.enter)="openDetail(row)"
+        ></tr>
+      </table>
+    </div>
+  }
+</div>

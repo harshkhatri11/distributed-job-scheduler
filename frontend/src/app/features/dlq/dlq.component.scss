@@ -1,0 +1,139 @@
+.page-header-wrap {
+  flex-wrap: wrap;
+  gap: 12px;
+
+  @media (max-width: 480px) {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.table-wrap {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dlq-table {
+  width: 100%;
+  min-width: 560px;
+  background: var(--color-surface) !important;
+  table-layout: fixed;
+
+  th,
+  td {
+    padding: 12px 16px !important;
+    border-bottom: 1px solid var(--color-border) !important;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    @media (max-width: 599px) {
+      padding: 10px 12px !important;
+    }
+  }
+
+  th {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    background: var(--color-surface) !important;
+  }
+
+  tr:last-child td {
+    border-bottom: none !important;
+  }
+
+  tr:hover td {
+    background: var(--color-surface-2);
+    cursor: pointer;
+  }
+}
+
+.col-job-id {
+  width: 120px;
+}
+.col-attempts {
+  width: 90px;
+  text-align: center;
+}
+.col-created {
+  width: 160px;
+}
+.col-actions {
+  width: 60px;
+  text-align: right;
+}
+
+@media (max-width: 1023px) {
+  .col-hide-tablet {
+    display: none !important;
+  }
+}
+
+@media (max-width: 599px) {
+  .col-hide-mobile {
+    display: none !important;
+  }
+}
+
+.cell-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.cell-time {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.cell-reason {
+  font-size: 13px;
+  color: var(--color-text);
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-attempts {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-danger) !important;
+}
+
+.cell-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.row--failed td {
+  background: rgba(239, 68, 68, 0.03);
+}
+.row--dead td {
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.btn-error {
+  color: var(--color-danger) !important;
+  opacity: 0.7;
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.state-msg {
+  color: var(--color-muted);
+  font-size: 14px;
+  padding: 48px 0;
+  text-align: center;
+}

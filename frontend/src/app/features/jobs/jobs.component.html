@@ -1,0 +1,102 @@
+<div class="page">
+  <div class="page__header">
+    <div class="page__title-block">
+      <h1 class="page__title">Jobs</h1>
+      <span class="page__count">{{ jobs().length }} total</span>
+    </div>
+    <button mat-flat-button class="btn-create" (click)="openCreateDialog()">
+      <mat-icon>add</mat-icon>
+      New Job
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="state-msg">Loading jobs...</div>
+  } @else if (jobs().length === 0) {
+    <div class="state-msg">No jobs found. Create your first job.</div>
+  } @else {
+    <div class="table-wrap">
+      <table mat-table [dataSource]="jobs()" class="jobs-table">
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Name</th>
+          <td mat-cell *matCellDef="let job">
+            <div class="cell-name">{{ job.name }}</div>
+            @if (job.description) {
+              <div class="cell-sub">{{ job.description }}</div>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="jobType">
+          <th mat-header-cell *matHeaderCellDef class="col-hide-mobile">Type</th>
+          <td mat-cell *matCellDef="let job" class="col-hide-mobile">
+            <span class="cell-mono">{{ job.jobType }}</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="cronExpression">
+          <th mat-header-cell *matHeaderCellDef class="col-hide-mobile">Schedule</th>
+          <td mat-cell *matCellDef="let job" class="col-hide-mobile">
+            <span class="cell-mono">{{ job.cronExpression }}</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let job">
+            <app-status-chip [status]="job.status" />
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="lastFireTime">
+          <th mat-header-cell *matHeaderCellDef class="col-hide-tablet">Last Fire</th>
+          <td mat-cell *matCellDef="let job" class="col-hide-tablet">
+            <span class="cell-time">
+              {{ job.lastFireTime ? (job.lastFireTime | date: 'dd MMM, HH:mm:ss') : '—' }}
+            </span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="nextFireTime">
+          <th mat-header-cell *matHeaderCellDef class="col-hide-tablet">Next Fire</th>
+          <td mat-cell *matCellDef="let job" class="col-hide-tablet">
+            <span class="cell-time">
+              {{ job.nextFireTime ? (job.nextFireTime | date: 'dd MMM, HH:mm:ss') : '—' }}
+            </span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let job">
+            <div class="cell-actions">
+              <button mat-icon-button matTooltip="View executions" (click)="viewExecutions(job)">
+                <mat-icon>history</mat-icon>
+              </button>
+              @if (job.status === 'ACTIVE') {
+                <button mat-icon-button matTooltip="Pause" (click)="pauseJob(job)">
+                  <mat-icon>pause</mat-icon>
+                </button>
+              } @else if (job.status === 'PAUSED') {
+                <button mat-icon-button matTooltip="Resume" (click)="resumeJob(job)">
+                  <mat-icon>play_arrow</mat-icon>
+                </button>
+              }
+              <button
+                mat-icon-button
+                matTooltip="Delete"
+                class="btn-delete"
+                (click)="deleteJob(job)"
+              >
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+            </div>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns"></tr>
+      </table>
+    </div>
+  }
+</div>

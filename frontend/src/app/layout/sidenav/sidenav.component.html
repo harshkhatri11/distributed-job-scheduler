@@ -1,0 +1,53 @@
+<aside class="sidenav">
+  <div class="sidenav__brand">
+    <span class="sidenav__brand-icon">⬡</span>
+    <div class="sidenav__brand-text">
+      <span class="sidenav__brand-title">JobScheduler</span>
+      <span class="sidenav__brand-sub">distributed</span>
+    </div>
+  </div>
+
+  <nav class="sidenav__nav">
+    @for (item of navItems; track item.route) {
+      <a
+        class="sidenav__link"
+        [routerLink]="item.route"
+        routerLinkActive="sidenav__link--active"
+        [routerLinkActiveOptions]="{ exact: false }"
+        (click)="onNavClick()"
+      >
+        <span
+          class="material-icons sidenav__link-icon"
+          [matTooltip]="item.label"
+          matTooltipPosition="right"
+        >
+          {{ item.icon }}
+        </span>
+        <span class="sidenav__link-label">{{ item.label }}</span>
+      </a>
+    }
+  </nav>
+
+  <div class="sidenav__footer">
+    <a
+      class="sidenav__tool-link"
+      [href]="grafanaUrl"
+      target="_blank"
+      matTooltip="Grafana"
+      matTooltipPosition="right"
+    >
+      <span class="material-icons">bar_chart</span>
+      <span class="sidenav__tool-label">Grafana</span>
+    </a>
+    <a
+      class="sidenav__tool-link"
+      [href]="zipkinUrl"
+      target="_blank"
+      matTooltip="Zipkin"
+      matTooltipPosition="right"
+    >
+      <span class="material-icons">timeline</span>
+      <span class="sidenav__tool-label">Zipkin</span>
+    </a>
+  </div>
+</aside>
