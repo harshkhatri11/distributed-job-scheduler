@@ -130,7 +130,7 @@ Users define cron-based jobs, monitor execution in real time, and get full obser
 ## Gallery
 
 ### Overview Dashboard
-> Real-time stat cards and execution charts. Auto-refreshes every 30 seconds.
+> Real-time stat cards and execution charts.
 
 ![Overview Dashboard](docs/screenshots/overview.png)
 
