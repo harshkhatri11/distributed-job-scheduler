@@ -24,7 +24,6 @@ Users define cron-based jobs, monitor execution in real time, and get full obser
 
 ---
 
----
 
 ## Table of Contents
 
@@ -49,9 +48,9 @@ Users define cron-based jobs, monitor execution in real time, and get full obser
 
 1. **Job defined** — user creates a cron job via REST API (e.g. `0 * * * * *` = every minute)
 2. **Cron engine fires** — `scheduler-service` uses a `DelayQueue` (zero-polling) to evaluate the next fire time via Spring `CronExpression`
-3. **Distributed lock acquired** — Redis `SET NX PX` prevents duplicate execution across multiple scheduler instances
+3. **Distributed lock acquired** — a `DistributedLockManager` abstraction acquires a Redis lock (`SET NX EX`) tagged with a unique ownership token per acquisition, preventing duplicate execution across multiple scheduler instances; the lock is released via an atomic Lua compare-and-delete immediately after dispatch, with a short TTL as a safety net
 4. **Event published** — job trigger payload sent to `job.trigger` Kafka topic (3 partitions)
-5. **Worker executes** — `worker-service` consumes the event (concurrency=3, matching partitions), executes via HTTP webhook or shell command
+5. **Worker executes** — `worker-service` consumes the event (concurrency=3, matching partitions), checks a Redis-backed idempotency guard to skip already-processed executions on redelivery, then executes via HTTP webhook or shell command
 6. **Result published** — worker publishes outcome to `job.result`; scheduler-service consumes and updates DB
 7. **Retry on failure** — exponential backoff up to N retries per job; exhausted retries go to `job.dlq`
 8. **DLQ captured** — DLQ consumer writes `DeadLetterEvent` to DB with full payload for inspection
@@ -65,7 +64,7 @@ Users define cron-based jobs, monitor execution in real time, and get full obser
 |---|---|
 | Backend | Java 21, Spring Boot 3.5.0 |
 | Messaging | Apache Kafka 3.7 (3-partition topics) |
-| Cache + Locking | Redis 7.2 (SET NX PX distributed lock) |
+| Cache + Locking | Redis 7.2 (ownership-token distributed lock + idempotency guard) |
 | Database | PostgreSQL 16, Flyway migrations |
 | ORM + Mapping | Spring Data JPA, MapStruct |
 | Frontend | Angular 21, Angular Material, Tailwind CSS v4 |
@@ -99,7 +98,7 @@ Users define cron-based jobs, monitor execution in real time, and get full obser
 |---|---|---|
 | 🕐 | **Cron scheduling** | Standard 6-field cron expressions with sub-minute precision |
 | ⚡ | **Zero-polling engine** | `DelayQueue` based — no DB polling, no sleep loops, no wasted CPU |
-| 🔒 | **Distributed locking** | Redis `SET NX PX` prevents concurrent execution across scheduler replicas |
+| 🔒 | **Distributed locking** | Redis lock with per-acquisition UUID ownership token and atomic Lua release, preventing concurrent execution across scheduler replicas — safe even under cross-instance timing overlap |
 | 🔄 | **Job lifecycle** | Create, pause, resume, delete via REST API and dashboard UI |
 
 ### 🚀 Execution & Reliability
@@ -108,6 +107,7 @@ Users define cron-based jobs, monitor execution in real time, and get full obser
 | 🌐 | **HTTP Webhook executor** | Fire POST/GET to any URL with custom headers and body |
 | 🖥️ | **Shell Command executor** | Run any shell command on the worker node |
 | 🔁 | **Automatic retry** | Per-job configurable max retries with exponential backoff |
+| ♻️ | **Redelivery-safe execution** | Redis-backed idempotency guard (`SETNX` on execution ID) skips duplicate processing if Kafka redelivers a message after a consumer crash or rebalance |
 | ☠️ | **Dead Letter Queue** | Exhausted retries → `job.dlq` topic → `dead_letter_events` table with full payload inspection |
 
 ### 📊 Observability
@@ -200,6 +200,7 @@ distributed-job-scheduler/
 │   │       ├── entity/                 # Job, JobExecution, DeadLetterEvent
 │   │       ├── enums/                  # JobStatus, JobType, ExecutionStatus
 │   │       ├── exception/              # GlobalExceptionHandler, JobNotFoundException
+│   │       ├── lock/                   # DistributedLockManager (interface), RedisDistributedLockManager (impl)
 │   │       ├── metrics/                # SchedulerMetrics (Micrometer counters/timers)
 │   │       ├── model/                  # ScheduledJob (DelayQueue entry)
 │   │       ├── producer/               # JobEventProducer
@@ -220,6 +221,7 @@ distributed-job-scheduler/
 │   │       ├── enums/                  # JobStatus, JobType, ExecutionStatus
 │   │       ├── executor/               # JobExecutor interface
 │   │       │   └── impl/               # HttpWebhookExecutor, ShellCommandExecutor
+│   │       ├── idempotency/            # IdempotencyChecker (interface), RedisIdempotencyChecker (impl)
 │   │       ├── metrics/                # WorkerMetrics (Micrometer counters/timers)
 │   │       ├── model/                  # JobTriggerPayload, JobResultPayload
 │   │       ├── producer/               # JobResultProducer (job.result + job.dlq)
@@ -440,6 +442,7 @@ Micrometer Tracing → OpenTelemetry bridge → Zipkin HTTP exporter. 100% sampl
 
 ## CI/CD
 
+
 GitHub Actions workflow on every push:
 
 ```
@@ -470,7 +473,8 @@ Each image is tagged with both `latest` and the exact git commit SHA for precise
 | Decision | Why |
 |---|---|
 | **Zero-polling scheduling engine** | `DelayQueue` holds jobs sorted by next fire time — engine thread blocks until the next job is due. No DB polling, no sleep loops. Active jobs reload from DB on startup. |
-| **Distributed locking with Redis** | `SET NX PX` (set-if-not-exists with TTL) prevents duplicate execution across multiple `scheduler-service` instances. TTL matches job timeout so locks always expire. |
+| **Distributed locking with ownership tokens** | A `DistributedLockManager` interface abstracts Redis out of `SchedulingEngine` (Dependency Inversion — the engine has zero knowledge of the caching layer). The Redis implementation acquires the lock with `SET NX EX` using a unique UUID token per acquisition rather than a static value, and releases it via an atomic Lua script that verifies ownership before deleting — preventing one scheduler instance from ever deleting a lock held by another. TTL was also shrunk from the full job timeout down to a fixed 10s, since the lock only needs to protect the dispatch critical section (save execution + Kafka publish), not the full downstream execution lifecycle — with an explicit release right after dispatch, TTL is now a safety net rather than the primary release mechanism. |
+| **Worker-side idempotency guard** | Kafka's at-least-once delivery means a consumer crash before offset commit, or a rebalance, can redeliver an already-processed message. An `IdempotencyChecker` interface + Redis `SETNX` on `processed:execution:<executionId>` (24h TTL) ensures a redelivered message is skipped rather than re-executed — verified locally by forcing a real redelivery (killing the worker mid-processing) and confirming a single DB row and a correct skip on the duplicate. |
 | **Kafka topic design** | `job.trigger` and `job.result` use 3 partitions each, matching `concurrency=3` on the listener. True parallel execution with per-job ordering (job ID as partition key). |
 | **Strategy pattern for executors** | `JobExecutor` interface → `HttpWebhookExecutor` + `ShellCommandExecutor`. Adding a new executor type requires zero changes to existing code. |
 | **MapStruct for all mapping** | Zero manual mapping. All entity ↔ DTO conversions through `@Mapper(componentModel = "spring")` interfaces. Compile-time safety, no reflection overhead. |
