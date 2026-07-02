@@ -4,6 +4,7 @@ import com.harshkhatri.scheduler.entity.Job;
 import com.harshkhatri.scheduler.entity.JobExecution;
 import com.harshkhatri.scheduler.enums.ExecutionStatus;
 import com.harshkhatri.scheduler.enums.JobStatus;
+import com.harshkhatri.scheduler.lock.DistributedLockManager;
 import com.harshkhatri.scheduler.metrics.SchedulerMetrics;
 import com.harshkhatri.scheduler.model.ScheduledJob;
 import com.harshkhatri.scheduler.producer.JobEventProducer;
@@ -13,7 +14,6 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,8 +35,9 @@ public class SchedulingEngine {
     private final JobRepository jobRepository;
     private final JobExecutionRepository jobExecutionRepository;
     private final JobEventProducer jobEventProducer;
-    private final StringRedisTemplate redisTemplate;
     private final SchedulerMetrics schedulerMetrics;
+    private final DistributedLockManager lockManager;
+    private static final Duration DISPATCH_LOCK_TTL = Duration.ofSeconds(10);
 
     private final DelayQueue<ScheduledJob> delayQueue = new DelayQueue<>();
     private final ExecutorService dispatchThread = Executors.newSingleThreadExecutor(
@@ -130,17 +131,15 @@ public class SchedulingEngine {
         }
 
         String lockKey = "lock:job:" + job.getId();
-        Boolean acquired = redisTemplate.opsForValue()
-                .setIfAbsent(lockKey, "locked",
-                        Duration.ofSeconds(job.getTimeoutSeconds()));
+        String lockToken = lockManager.tryAcquireLock(lockKey, DISPATCH_LOCK_TTL);
 
-        if (!Boolean.TRUE.equals(acquired)) {
-            log.warn("Could not acquire lock for job={} — skipping", job.getId());
+        if (lockToken == null) {
+            log.warn("Could not acquire dispatch lock for job={} — another instance is dispatching", job.getId());
             reschedule(job);
             return;
         }
 
-        log.info("Lock acquired for job={}", job.getId());
+        log.info("Dispatch lock acquired for job={}", job.getId());
 
         // Capture fire time before dispatch to measure scheduling latency
         Instant fireTime = Instant.now();
@@ -170,6 +169,7 @@ public class SchedulingEngine {
             // Kafka publish failed — count it so Grafana can alert on publish errors
             schedulerMetrics.recordTriggerFailure();
         } finally {
+            lockManager.releaseLock(lockKey, lockToken);
             Job fresh = jobRepository.findById(job.getId()).orElse(null);
             if (fresh != null && fresh.getStatus() == JobStatus.ACTIVE) {
                 reschedule(fresh);

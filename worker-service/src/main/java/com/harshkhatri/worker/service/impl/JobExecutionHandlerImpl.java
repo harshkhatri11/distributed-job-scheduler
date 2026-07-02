@@ -1,6 +1,7 @@
 package com.harshkhatri.worker.service.impl;
 
 import com.harshkhatri.worker.executor.JobExecutor;
+import com.harshkhatri.worker.idempotency.IdempotencyChecker;
 import com.harshkhatri.worker.metrics.WorkerMetrics;
 import com.harshkhatri.worker.model.JobResultPayload;
 import com.harshkhatri.worker.model.JobTriggerPayload;
@@ -25,8 +26,10 @@ public class JobExecutionHandlerImpl implements JobExecutionHandler {
     private final JobResultProducer jobResultProducer;
     private final StringRedisTemplate redisTemplate;
     private final WorkerMetrics workerMetrics;
+    private final IdempotencyChecker idempotencyChecker;
 
     private static final String JOB_PAUSED_KEY = "paused:job:";
+    private static final Duration IDEMPOTENCY_TTL = Duration.ofHours(24);
 
     @Override
     public void handle(JobTriggerPayload payload) {
@@ -34,6 +37,13 @@ public class JobExecutionHandlerImpl implements JobExecutionHandler {
         if (Boolean.TRUE.equals(redisTemplate.hasKey(pausedKey))) {
             log.info("Job={} is PAUSED — skipping stale trigger executionId={}",
                     payload.jobId(), payload.executionId());
+            return;
+        }
+
+        if (!idempotencyChecker.markProcessingIfAbsent(
+                payload.executionId().toString(), IDEMPOTENCY_TTL)) {
+            log.warn("executionId={} already processed or in-flight — skipping duplicate delivery",
+                    payload.executionId());
             return;
         }
 
